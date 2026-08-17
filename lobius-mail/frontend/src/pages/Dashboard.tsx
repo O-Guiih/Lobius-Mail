@@ -6,7 +6,8 @@ import {
     PlusCircle,
     Search,
     CheckCircle2,
-    Clock
+    Clock,
+    FileUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Table,
     TableBody,
+    TableCell,
     TableHead,
     TableHeader,
     TableRow,
@@ -51,7 +53,7 @@ export function Dashboard() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm fot-medium text-slate-600">Armazenamento</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-600">Armazenamento</CardTitle>
                         <HardDrive className="w-4 h-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
@@ -75,7 +77,7 @@ export function Dashboard() {
                                     <TableHead>Status</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            </TableBody>
+                            <TableBody>
                                 <TableRow>
                                     <TableCell className="font-medium text-slate-700">arquivo_juridico_2023.pst</TableCell>
                                     <TableCell>48 GB</TableCell>
@@ -108,12 +110,13 @@ export function Dashboard() {
                         <CardContent className="p-4 flex flex-col gap-3">
                             <Link to="/pesquisar">
                                 <Button variant="outline" className="w-full justify-start gap-3 h-12 text-slate-600">
-                                    <Serach className="w-5 h-5 text-blue-600" />
+                                    <Search className="w-5 h-5 text-blue-600" />
                                     Pesquisar e-mails
                                 </Button>
                             </Link>
                             <Link to="/importar">
-                                <Button variant="outline" className="w-5 h-5 text-blue-600" />
+                                <Button variant="outline" className="w-full justify-start gap-3 h-12 text-slate-600">
+                                <FileUp className="w-5 h-5 text-blue-600" />
                                 Importar PST
                                 </Button>
                             </Link>

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
-import { Dashboard } from ".pages/DashboardLayout";
+import { Dashboard } from "./pages/Dashboard";
 
 // Componentes temporários 
 const Pesquisar = () => <h1 className="text-2xl font-bold text-slate-800">Pesquisar E-mails</h1>;
@@ -23,7 +23,7 @@ export default function App() {
                     <Route path="arquivos-pst" element={<ArquivosPST />} />
                     <Route path="importar" element={<ImportarPST />} />
                 </Route>
-            <Routes>
+            </Routes>
         </BrowserRouter>
     );
 }
