@@ -2,11 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
 import Importar from "./pages/Importar";
+import Pesquisar from "./pages/Pesquisar";
 
-// Componentes temporários 
-const Pesquisar = () => <h1 className="text-2xl font-bold text-slate-800">Pesquisar E-mails</h1>;
+// Componentes temporários
 const ArquivosPST = () => <h1 className="text-2xl font-bold text-slate-800">Arquivos PST</h1>;
-const ImportarPST = () => <h1 className="text-2xl font-bold text-slate-800">Importar PST</h1>
 
 export default function App() {
     return (
@@ -19,10 +18,12 @@ export default function App() {
                     {/* Rota oficial do Dashboard */}
                     <Route path="dashboard" element={<Dashboard />} />
 
-                    {/* Rotas temporárias */}
+                    {/* Rotas oficiais das telas que já foram criadas */}
                     <Route path="pesquisar" element={<Pesquisar />} />
-                    <Route path="arquivos-pst" element={<ArquivosPST />} />
                     <Route path="importar" element={<Importar/>} />
+                    
+                    {/* Rotas temporárias */}
+                    <Route path="arquivos-pst" element={<ArquivosPST />} />
                 </Route>
             </Routes>
         </BrowserRouter>
