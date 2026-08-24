@@ -3,9 +3,8 @@ import { DashboardLayout } from "./layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
 import Importar from "./pages/Importar";
 import Pesquisar from "./pages/Pesquisar";
+import ArquivosPST from "./pages/ArquivosPST"
 
-// Componentes temporários
-const ArquivosPST = () => <h1 className="text-2xl font-bold text-slate-800">Arquivos PST</h1>;
 
 export default function App() {
     return (
