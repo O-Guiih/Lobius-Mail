@@ -11,7 +11,7 @@ export function DashboardLayout() {
         <div className="flex h-screen w-full bg-slate-50">
             
             {/* SIDEBAR (Desktop) */}
-            <aside className="hidden md: flex flex-col w-64 border-r border-slate-200 bg-white">
+            <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 bg-white">
 
                 {/* Espaço para a Logo */}
                 <div className="h-16 flex items-center px-6 border-b border-slate-100">
@@ -30,9 +30,40 @@ export function DashboardLayout() {
                     <Link 
                     to="/dashboard" 
                     className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors $ {
-                        isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        isActive("/dashboard") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`}
                     >
+                        <LayoutDashboard className="w-5 h-5" />
+                        Dashboard
+                    </Link>
+
+                    <Link
+                        to="/importar"
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                            isActive("/importar") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        <FolderArchive className="w-5 h-5" />
+                        Importar PST
+                    </Link>
+
+                    <Link
+                        to="/pesquisar"
+                        className={`flex items-center gap-3 px-3 py-2 rounded md transition-colors ${
+                            isActive("/pesquisar") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        <Search className="w-5 h-5" />
+                        Pesquisar
+                    </Link>
+
+                        <Link
+                            to="/arquivos-pst"
+                            className= {`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                                isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        
                         <FolderArchive className="w-5 h-5" />
                         Arquivos PST
                     </Link>
@@ -44,7 +75,7 @@ export function DashboardLayout() {
                         <User className="w-5 h-5 text-slate-400" />
                         <span>usuario@escritorio.com</span>
                     </div>
-                    <button className="w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left">
+                    <button className="flex w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left">
                         <LogOut className="w-5 h-5" />
                         <span>Sair</span>
                     </button>
