@@ -3,25 +3,33 @@ import { DashboardLayout } from "./layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
 import Importar from "./pages/Importar";
 import Pesquisar from "./pages/Pesquisar";
-import ArquivosPST from "./pages/ArquivosPST"
+import ArquivosPST from "./pages/ArquivosPST";
+import Login from "./pages/Login";
 
 
 export default function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<DashboardLayout />}>
-                    {/* Redireciona a raiz direto para o dashboard */}
-                    <Route index element={<Navigate to="/dashboard" replace />} />
+                {/* ========================================= */}
+                {/* ROTAS PÚBLICAS (Fora do sistema (login, cadastro))*/}
+                {/* ========================================= */}
 
-                    {/* Rota oficial do Dashboard */}
+                {/* Raiz (Quando o usuário entrar vai direto para a tela de login) */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+
+                {/* Tela de Login */}
+                <Route path="/login" element={<Login />} />
+
+                {/* ========================================= */}
+                {/* ROTAS INTERNAS (Dentro do sistema)     */}
+                {/* ========================================= */}
+
+                    {/* ROTAS*/}
+                <Route element={<DashboardLayout />}>
                     <Route path="dashboard" element={<Dashboard />} />
-
-                    {/* Rotas oficiais das telas que já foram criadas */}
                     <Route path="pesquisar" element={<Pesquisar />} />
                     <Route path="importar" element={<Importar/>} />
-                    
-                    {/* Rotas temporárias */}
                     <Route path="arquivos-pst" element={<ArquivosPST />} />
                 </Route>
             </Routes>
