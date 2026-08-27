@@ -1,9 +1,25 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu } from "lucide-react";
+import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu, Users } from "lucide-react";
 
 export function DashboardLayout() {
+    // ========================================================================
+    // 🛑 EQUIPE DE BACK-END E BANCO DE DADOS 🛑
+    //
+    // O QUE ESTA VARIÁVEL FAZ?
+    // Ela controla o sistema de permissões (Controle de Acesso) da tela de "Usuários".
+    // Ela é responsável por duas barreiras de segurança no Front-end:
+    // 1. Esconder o botão "Usuários" no menu lateral (Arquivo: DashboardLayout.tsx).
+    // 2. Bloquear o acesso direto pela URL '/usuarios' (Arquivo: App.tsx).
+    // 
+    // O QUE VOCÊS PRECISAM FAZER?
+    // Atualmente, o valor está "chumbado" manualmente para testes visuais.
+    // Quando a API de Login estiver pronta, apaguem esta variável estática e façam 
+    // o sistema ler o perfil real do usuário logado (ex: "admin" ou "comum") 
+    // direto da sessão ou do Banco de Dados.
+    // ========================================================================
     const location = useLocation();
     const navigate = useNavigate();
+    const nivelDeAcesso: string = "comum";
 
     // Função para saber se o menu atual está ativo
     const isActive = (path: string) => location.pathname === path;
@@ -68,6 +84,19 @@ export function DashboardLayout() {
                         <FolderArchive className="w-5 h-5" />
                         Arquivos PST
                     </Link>
+
+                    {/* O botão só aparece se o nível de acesso for admin */}
+                    {nivelDeAcesso === "admin" && (
+                        <Link
+                        to="/usuarios"
+                        className={`flex items=center gap-3 px-3 py-2 rounded-md transition-colors ${
+                                isActive("/usuarios") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                            }`}
+                        >
+                            <Users className="w-5 h-5" />
+                            Usuários
+                        </Link>
+                    )}
                 </nav>
 
                 {/* Rodapé da Sidebar (Usuário e Sair) */}
