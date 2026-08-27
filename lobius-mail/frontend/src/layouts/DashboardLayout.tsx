@@ -1,8 +1,9 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu } from "lucide-react";
 
 export function DashboardLayout() {
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Função para saber se o menu atual está ativo
     const isActive = (path: string) => location.pathname === path;
@@ -75,7 +76,10 @@ export function DashboardLayout() {
                         <User className="w-5 h-5 text-slate-400" />
                         <span>usuario@escritorio.com</span>
                     </div>
-                    <button className="flex w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left">
+                    <button
+                        onClick={() => navigate("/login")} 
+                        className="flex w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left"
+                    >
                         <LogOut className="w-5 h-5" />
                         <span>Sair</span>
                     </button>
