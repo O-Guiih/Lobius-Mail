@@ -1,0 +1,23 @@
+# 1. Dependências e Bibliotecas (São muito pesadas e não devem ir pro Git)
+node_modules/
+
+# 2. Arquivos de Ambiente (Onde vão ficar suas senhas e chaves de API do backend)
+.env
+.env.*
+*.local
+
+# 3. Chaves do Firebase Admin (Segurança Máxima)
+*serviceAccount*.json
+serviceAccountKey.json
+
+# 4. Logs de erro e debug (Lixo gerado pelo terminal)
+*.log
+npm-debug.log*
+firebase-debug.log*
+
+# 5. Arquivos de cache do Firebase 
+.firebase/
+
+# 6. Arquivos inúteis gerados pelo sistema operacional (Mac/Windows)
+.DS_Store
+Thumbs.db
