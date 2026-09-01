@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
     FileBox,
-    Database,
     HardDrive,
     PlusCircle,
     Search,

@@ -14,7 +14,7 @@ interface Email {
 
 export default function() {
     const [busca, setBusca] = useState ("");
-    const [resultados, setResultados] = useState<Email[]>([]);
+    const [resultados] = useState<Email[]>([]);
 
     const handleBuscar = () => {
         // Será feito a chamada da API do back-end futuramente
