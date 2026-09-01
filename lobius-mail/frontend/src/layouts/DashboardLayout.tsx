@@ -1,8 +1,25 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu } from "lucide-react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu, Users } from "lucide-react";
 
 export function DashboardLayout() {
+    // ========================================================================
+    // 🛑 EQUIPE DE BACK-END E BANCO DE DADOS 🛑
+    //
+    // O QUE ESTA VARIÁVEL FAZ?
+    // Ela controla o sistema de permissões (Controle de Acesso) da tela de "Usuários".
+    // Ela é responsável por duas barreiras de segurança no Front-end:
+    // 1. Esconder o botão "Usuários" no menu lateral (Arquivo: DashboardLayout.tsx).
+    // 2. Bloquear o acesso direto pela URL '/usuarios' (Arquivo: App.tsx).
+    // 
+    // O QUE VOCÊS PRECISAM FAZER?
+    // Atualmente, o valor está "chumbado" manualmente para testes visuais.
+    // Quando a API de Login estiver pronta, apaguem esta variável estática e façam 
+    // o sistema ler o perfil real do usuário logado (ex: "admin" ou "comum") 
+    // direto da sessão ou do Banco de Dados.
+    // ========================================================================
     const location = useLocation();
+    const navigate = useNavigate();
+    const nivelDeAcesso: string = "comum";
 
     // Função para saber se o menu atual está ativo
     const isActive = (path: string) => location.pathname === path;
@@ -11,7 +28,7 @@ export function DashboardLayout() {
         <div className="flex h-screen w-full bg-slate-50">
             
             {/* SIDEBAR (Desktop) */}
-            <aside className="hidden md: flex flex-col w-64 border-r border-slate-200 bg-white">
+            <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 bg-white">
 
                 {/* Espaço para a Logo */}
                 <div className="h-16 flex items-center px-6 border-b border-slate-100">
@@ -30,12 +47,56 @@ export function DashboardLayout() {
                     <Link 
                     to="/dashboard" 
                     className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors $ {
-                        isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        isActive("/dashboard") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        <LayoutDashboard className="w-5 h-5" />
+                        Dashboard
+                    </Link>
+
+                    <Link
+                        to="/importar"
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                            isActive("/importar") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`}
                     >
                         <FolderArchive className="w-5 h-5" />
+                        Importar PST
+                    </Link>
+
+                    <Link
+                        to="/pesquisar"
+                        className={`flex items-center gap-3 px-3 py-2 rounded md transition-colors ${
+                            isActive("/pesquisar") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        <Search className="w-5 h-5" />
+                        Pesquisar
+                    </Link>
+
+                        <Link
+                            to="/arquivos-pst"
+                            className= {`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                                isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                    >
+                        
+                        <FolderArchive className="w-5 h-5" />
                         Arquivos PST
                     </Link>
+
+                    {/* O botão só aparece se o nível de acesso for admin */}
+                    {nivelDeAcesso === "admin" && (
+                        <Link
+                        to="/usuarios"
+                        className={`flex items=center gap-3 px-3 py-2 rounded-md transition-colors ${
+                                isActive("/usuarios") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                            }`}
+                        >
+                            <Users className="w-5 h-5" />
+                            Usuários
+                        </Link>
+                    )}
                 </nav>
 
                 {/* Rodapé da Sidebar (Usuário e Sair) */}
@@ -44,7 +105,10 @@ export function DashboardLayout() {
                         <User className="w-5 h-5 text-slate-400" />
                         <span>usuario@escritorio.com</span>
                     </div>
-                    <button className="w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left">
+                    <button
+                        onClick={() => navigate("/login")} 
+                        className="flex w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left"
+                    >
                         <LogOut className="w-5 h-5" />
                         <span>Sair</span>
                     </button>
