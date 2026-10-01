@@ -2,6 +2,8 @@ from flask import Flask
 from flask_cors import CORS
 
 from routes.status import status_bp
+from routes.pesquisa import pesquisa_bp
+from routes.pst import pst_bp
 
 
 app = Flask(__name__)
@@ -9,6 +11,8 @@ app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"])
 
 app.register_blueprint(status_bp)
+app.register_blueprint(pesquisa_bp)
+app.register_blueprint(pst_bp)
 
 
 @app.route("/")
