@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Lê a string de conexão do arquivo .env (se não achar, usa um padrão de fallback)
 # Lembre-se de criar o arquivo .env na sua pasta e de trocar SUA_SENHA_AQUI pela sua senha do PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:553719@localhost:5432/lobius_mail")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:553719@localhost:5432/Lobius-Mail")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
