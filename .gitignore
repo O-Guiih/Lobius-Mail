@@ -21,3 +21,16 @@ firebase-debug.log*
 # 6. Arquivos inúteis gerados pelo sistema operacional (Mac/Windows)
 .DS_Store
 Thumbs.db
+# Ambiente virtual
+backend/venv/
+
+# Variáveis de ambiente e senhas
+backend/.env
+
+# Cache do Python
+backend/__pycache__/
+backend/routes/__pycache__/
+*.pyc
+
+# Arquivos do VS Code
+.vscode/
