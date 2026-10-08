@@ -1,15 +1,52 @@
+import { useState } from "react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Mudamos de Link para useNavigate
 
-export default function Login () {
+export default function Login() {
+    // 1. Criamos os estados para guardar o que o usuário digita
+    const [email, setEmail] = useState("");
+    const [senha, setSenha] = useState("");
+    const [erro, setErro] = useState(""); // Para mostrar erro caso a senha esteja errada
+    
+    // 2. Usamos o navigate para trocar de tela via código (só se o login der certo)
+    const navigate = useNavigate();
+
+    // 3. A FUNÇÃO DE CONEXÃO COM A API DO SEU AMIGO (SEM GAMBIARRA)
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault(); // Impede a página de recarregar
+        setErro(""); // Limpa erros antigos
+
+        try {
+            // Faz o pedido para o back-end real
+            const response = await fetch("http://localhost:5000/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, senha }) // Envia os dados que o usuário digitou
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // AQUI ESTÁ A MÁGICA: Guardando o Token (Crachá)
+                localStorage.setItem("token", data.token);
+                
+                // Redireciona para o Dashboard agora que temos permissão
+                navigate("/dashboard");
+            } else {
+                // Se a API retornar erro (ex: senha inválida), mostramos na tela
+                setErro(data.mensagem || "E-mail ou senha incorretos.");
+            }
+        } catch (error) {
+            setErro("Erro de conexão com o servidor. O Back-end está rodando?");
+        }
+    };
+
     return (
-        // Fundo da tela ocupando altura e centralizando o conteúdo
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-
-            {/* Card principal de Login */}
             <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-slate-200 p-8">
 
-                {/* Logo e Boas-vindas */}
                 <div className="flex flex-col items-center gap-3 mb-8">
                     <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
                         LM
@@ -18,10 +55,9 @@ export default function Login () {
                     <p className="text-slate-500 text-sm">Acesse o sistema corporativo</p>
                 </div>
 
-                {/* Formulário */}
-                <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                {/* 4. O formulário agora dispara a nossa função handleLogin */}
+                <form className="space-y-5" onSubmit={handleLogin}>
                     
-                    {/* Campo de E-mail */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700 block">E-mail Corporativo</label>
                         <div className="relative">
@@ -30,13 +66,15 @@ export default function Login () {
                             </div>
                             <input
                                 type="email"
+                                value={email} // Conectado ao estado
+                                onChange={(e) => setEmail(e.target.value)} // Atualiza o estado ao digitar
                                 className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                 placeholder="seu.nome@empresa.com.br"
+                                required
                             />
                         </div>
                     </div>
 
-                    {/* Campo de Senha */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label className="text-sm font-medium text-slate-700 block">Senha</label>
@@ -49,20 +87,28 @@ export default function Login () {
                             </div>
                             <input 
                                 type="password"
-                                className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-tranparent transition-all"
+                                value={senha} // Conectado ao estado
+                                onChange={(e) => setSenha(e.target.value)} // Atualiza o estado ao digitar
+                                className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                 placeholder="•••••••"
+                                required
                             />
                         </div>
                     </div>
 
-                    {/* Botão de Entrar (Simulando o login levando para o Dashboard) */}
-                    <Link
-                        to="/dashboard"
+                    {/* Mensagem de erro caso o login falhe */}
+                    {erro && (
+                        <p className="text-red-500 text-sm text-center font-medium">{erro}</p>
+                    )}
+
+                    {/* 5. Mudamos o <Link> para um <button type="submit"> real */}
+                    <button
+                        type="submit"
                         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-md transition-colors mt-6"
                     >
                         Entrar no Sistema
                         <ArrowRight className="w-4 h-4" />
-                    </Link>
+                    </button>
                 </form>
             </div>
         </div>

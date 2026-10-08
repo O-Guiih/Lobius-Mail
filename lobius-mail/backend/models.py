@@ -3,8 +3,6 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, BIGINT, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Lê a string de conexão do arquivo .env (se não achar, usa um padrão de fallback)
-# Lembre-se de criar o arquivo .env na sua pasta e de trocar SUA_SENHA_AQUI pela sua senha do PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:553719@localhost:5432/lobius_mail")
 
 engine = create_engine(DATABASE_URL)
@@ -17,12 +15,22 @@ Base = declarative_base()
 class Usuario(Base):
     __tablename__ = "usuarios"
     
-    id = Column(Integer, primary_key=True, index=True) 
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=False, default="Usuário")
     email = Column(String, unique=True, nullable=False) 
     senha_hash = Column(String, nullable=False) 
     nivel_de_acesso = Column(String, nullable=False) # "admin" ou "comum"
     status = Column(Boolean, default=True) 
     data_criacao = Column(DateTime, default=datetime.utcnow) 
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "email": self.email,
+            "nivelDeAcesso": self.nivel_de_acesso,
+            "status": "ativo" if self.status else "inativo"
+        }
 
 # ---------------------------------------------------------
 # [DB] Tabela: arquivos_pst
@@ -52,29 +60,42 @@ class Email(Base):
     data_envio = Column(DateTime) 
     tem_anexo = Column(Boolean) 
 
-# Índices (Indexes) exigidos para performance nas buscas do Front-end
 Index('idx_remetente', Email.remetente)
 Index('idx_assunto', Email.assunto)
 Index('idx_data_envio', Email.data_envio)
 
-# ---------------------------------------------------------
-# Execução (Migrations e Seed)
-# ---------------------------------------------------------
 def init_db():
     print("Iniciando setup do banco de dados...")
     Base.metadata.create_all(bind=engine)
     
     db = SessionLocal()
-    # Inserção (Seed) dos usuários iniciais conforme o Trello
-    if not db.query(Usuario).first():
-        admin = Usuario(email="admin@lobius.com", senha_hash="hash_ficticia_1", nivel_de_acesso="admin")
-        comum = Usuario(email="usuario@lobius.com", senha_hash="hash_ficticia_2", nivel_de_acesso="comum")
-        db.add_all([admin, comum])
-        db.commit()
-        print("Usuários 'Seed' (admin e comum) inseridos com sucesso!")
-    else:
-        print("As tabelas já existem e os usuários já foram semeados anteriormente.")
-    db.close()
+    try:
+        if not db.query(Usuario).first():
+            from werkzeug.security import generate_password_hash
+            admin = Usuario(
+                nome="Administrador",
+                email="admin@lobius.com", 
+                senha_hash=generate_password_hash("admin123"), 
+                nivel_de_acesso="admin",
+                status=True
+            )
+            comum = Usuario(
+                nome="Usuário Comum",
+                email="usuario@lobius.com", 
+                senha_hash=generate_password_hash("123456"), 
+                nivel_de_acesso="comum",
+                status=True
+            )
+            db.add_all([admin, comum])
+            db.commit()
+            print("Usuários 'Seed' (admin e comum) inseridos no PostgreSQL!")
+        else:
+            print("As tabelas já existem e os usuários já foram semeados anteriormente.")
+    except Exception as e:
+        db.rollback()
+        print(f"Erro no init_db: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     init_db()

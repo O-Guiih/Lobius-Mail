@@ -1,28 +1,56 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu, Users } from "lucide-react";
 
 export function DashboardLayout() {
-    // ========================================================================
-    // 🛑 EQUIPE DE BACK-END E BANCO DE DADOS 🛑
-    //
-    // O QUE ESTA VARIÁVEL FAZ?
-    // Ela controla o sistema de permissões (Controle de Acesso) da tela de "Usuários".
-    // Ela é responsável por duas barreiras de segurança no Front-end:
-    // 1. Esconder o botão "Usuários" no menu lateral (Arquivo: DashboardLayout.tsx).
-    // 2. Bloquear o acesso direto pela URL '/usuarios' (Arquivo: App.tsx).
-    // 
-    // O QUE VOCÊS PRECISAM FAZER?
-    // Atualmente, o valor está "chumbado" manualmente para testes visuais.
-    // Quando a API de Login estiver pronta, apaguem esta variável estática e façam 
-    // o sistema ler o perfil real do usuário logado (ex: "admin" ou "comum") 
-    // direto da sessão ou do Banco de Dados.
-    // ========================================================================
     const location = useLocation();
     const navigate = useNavigate();
-    const nivelDeAcesso: string = "comum";
 
-    // Função para saber se o menu atual está ativo
+    const [nivelDeAcesso, setNivelDeAcesso] = useState<string>("comum");
+    const [userEmail, setUserEmail] = useState<string>("usuario@escritorio.com");
+
+    // LER DADOS DO TOKEN JWT DO USUÁRIO LOGADO
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+
+        if (token) {
+            try {
+                // Decodifica o Payload do Token JWT sem bibliotecas externas
+                const base64Url = token.split(".")[1];
+                const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+                const jsonPayload = decodeURIComponent(
+                    atob(base64)
+                        .split("")
+                        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                        .join("")
+                );
+
+                const payload = JSON.parse(jsonPayload);
+
+                // Atualiza o e-mail dinâmico
+                if (payload.email) {
+                    setUserEmail(payload.email);
+                }
+
+                // Atualiza o nível de acesso (aceita admin ou administrador)
+                const nivel = payload.nivelDeAcesso || payload.nivel || payload.role || "comum";
+                setNivelDeAcesso(nivel.toLowerCase());
+            } catch (error) {
+                console.error("Erro ao decodificar token JWT:", error);
+            }
+        }
+    }, []);
+
+    // Função para tratar o Logout
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        navigate("/login");
+    };
+
+    // Função para verificar se a rota atual é a selecionada
     const isActive = (path: string) => location.pathname === path;
+
+    const isAdmin = nivelDeAcesso === "admin" || nivelDeAcesso === "administrador";
 
     return (
         <div className="flex h-screen w-full bg-slate-50">
@@ -30,12 +58,10 @@ export function DashboardLayout() {
             {/* SIDEBAR (Desktop) */}
             <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 bg-white">
 
-                {/* Espaço para a Logo */}
+                {/* Logo do Sistema */}
                 <div className="h-16 flex items-center px-6 border-b border-slate-100">
-                    <div className="flex items-center gap-2 front-bold text-xl text-slate-800">
-
-                        {/* Onde entrará a imagem da logo futuramente */}
-                        <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm">
+                    <div className="flex items-center gap-2 font-bold text-xl text-slate-800">
+                        <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm font-bold">
                             LM
                         </div>
                         Lobius Mail
@@ -45,9 +71,9 @@ export function DashboardLayout() {
                 {/* Menu de Navegação */}
                 <nav className="flex-1 px-4 py-6 space-y-2">
                     <Link 
-                    to="/dashboard" 
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors $ {
-                        isActive("/dashboard") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        to="/dashboard" 
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                            isActive("/dashboard") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`}
                     >
                         <LayoutDashboard className="w-5 h-5" />
@@ -66,7 +92,7 @@ export function DashboardLayout() {
 
                     <Link
                         to="/pesquisar"
-                        className={`flex items-center gap-3 px-3 py-2 rounded md transition-colors ${
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                             isActive("/pesquisar") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`}
                     >
@@ -74,22 +100,21 @@ export function DashboardLayout() {
                         Pesquisar
                     </Link>
 
-                        <Link
-                            to="/arquivos-pst"
-                            className= {`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                                isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    <Link
+                        to="/arquivos-pst"
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                            isActive("/arquivos-pst") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`}
                     >
-                        
                         <FolderArchive className="w-5 h-5" />
                         Arquivos PST
                     </Link>
 
-                    {/* O botão só aparece se o nível de acesso for admin */}
-                    {nivelDeAcesso === "admin" && (
+                    {/* Exibe o botão Usuários APENAS se o usuário for Administrador */}
+                    {isAdmin && (
                         <Link
-                        to="/usuarios"
-                        className={`flex items=center gap-3 px-3 py-2 rounded-md transition-colors ${
+                            to="/usuarios"
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
                                 isActive("/usuarios") ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                             }`}
                         >
@@ -101,12 +126,12 @@ export function DashboardLayout() {
 
                 {/* Rodapé da Sidebar (Usuário e Sair) */}
                 <div className="p-4 border-t border-slate-200">
-                    <div className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700">
-                        <User className="w-5 h-5 text-slate-400" />
-                        <span>usuario@escritorio.com</span>
+                    <div className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 truncate" title={userEmail}>
+                        <User className="w-5 h-5 text-slate-400 shrink-0" />
+                        <span className="truncate">{userEmail}</span>
                     </div>
                     <button
-                        onClick={() => navigate("/login")} 
+                        onClick={handleLogout} 
                         className="flex w-full items-center gap-3 px-3 py-2 mt-1 rounded-md text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors text-left"
                     >
                         <LogOut className="w-5 h-5" />
@@ -121,7 +146,7 @@ export function DashboardLayout() {
                 {/* Header Mobile */}
                 <header className="md:hidden h-16 border-b border-slate-200 bg-white flex items-center justify-between px-4">
                     <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
-                        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white text-xs">LM</div>
+                        <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white text-xs font-bold">LM</div>
                         Lobius
                     </div>
                     <button className="text-slate-500 hover:text-slate-800">
@@ -131,7 +156,7 @@ export function DashboardLayout() {
                 
                 {/* Conteúdo Dinâmico das Telas */}
                 <div className="flex-1 overflow-auto p-4 md:p-8">
-                    <Outlet /> {/* Onde o React Router vai injetar o Dashboard, Pesquisa, etc */}
+                    <Outlet />
                 </div>
             </main>
 
