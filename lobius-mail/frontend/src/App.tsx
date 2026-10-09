@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
@@ -7,42 +6,17 @@ import Pesquisar from "./pages/Pesquisar";
 import ArquivosPST from "./pages/ArquivosPST";
 import Login from "./pages/Login";
 import Usuarios from "./pages/Usuarios";
+import { readTokenClaims } from "@/lib/api";
+
+function RotaAutenticada({ children }: { children: React.ReactNode }) {
+    return readTokenClaims() ? children : <Navigate to="/login" replace />;
+}
 
 // Componente para proteger rotas exclusivas de Admin
 function RotaAdmin({ children }: { children: React.ReactNode }) {
-    const [carregando, setCarregando] = useState(true);
-    const [isAdmin, setIsAdmin] = useState(false);
-
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            try {
-                // Decodifica o payload do Token JWT
-                const base64Url = token.split(".")[1];
-                const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-                const jsonPayload = decodeURIComponent(
-                    atob(base64)
-                        .split("")
-                        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-                        .join("")
-                );
-
-                const payload = JSON.parse(jsonPayload);
-                const nivel = payload.nivelDeAcesso || payload.nivel || payload.role || "";
-
-                if (nivel.toLowerCase() === "admin" || nivel.toLowerCase() === "administrador") {
-                    setIsAdmin(true);
-                }
-            } catch (err) {
-                console.error("Erro ao validar token de admin:", err);
-            }
-        }
-        setCarregando(false);
-    }, []);
-
-    // Evita o redirecionamento precoce enquanto recupera o token
-    if (carregando) return null;
-
+    const claims = readTokenClaims();
+    const nivel = (claims?.nivelDeAcesso || claims?.nivel || claims?.role || "").toLowerCase();
+    const isAdmin = nivel === "admin" || nivel === "administrador";
     return isAdmin ? children : <Navigate to="/dashboard" replace />;
 }
 
@@ -55,7 +29,7 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
 
                 {/* ROTAS INTERNAS */}
-                <Route element={<DashboardLayout />}>
+                <Route element={<RotaAutenticada><DashboardLayout /></RotaAutenticada>}>
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="pesquisar" element={<Pesquisar />} />
                     <Route path="importar" element={<Importar />} />

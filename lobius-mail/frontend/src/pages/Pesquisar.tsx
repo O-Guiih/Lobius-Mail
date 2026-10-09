@@ -3,22 +3,41 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Filter, Mail } from "lucide-react";
+import { apiRequest } from "@/lib/api";
 
 // Tipagem do e-mail que virá do servidor
 interface Email {
-    id: string;
-    de: string;
-    assunto: string;
-    data: string;
+    id: number;
+    remetente: string;
+    assunto: string | null;
+    data_envio: string | null;
 }
 
-export default function() {
-    const [busca, setBusca] = useState ("");
-    const [resultados] = useState<Email[]>([]);
+export default function Pesquisar() {
+    const [busca, setBusca] = useState("");
+    const [remetente, setRemetente] = useState("");
+    const [assunto, setAssunto] = useState("");
+    const [exibirFiltros, setExibirFiltros] = useState(false);
+    const [resultados, setResultados] = useState<Email[]>([]);
+    const [carregando, setCarregando] = useState(false);
+    const [erro, setErro] = useState("");
 
-    const handleBuscar = () => {
-        // Será feito a chamada da API do back-end futuramente
-        console.log("Buscando por:", busca);
+    const handleBuscar = async () => {
+        const parametros = new URLSearchParams();
+        if (busca.trim()) parametros.set("q", busca.trim());
+        if (remetente.trim()) parametros.set("remetente", remetente.trim());
+        if (assunto.trim()) parametros.set("assunto", assunto.trim());
+        setCarregando(true);
+        setErro("");
+        try {
+            const resposta = await apiRequest<{ resultados: Email[] }>(`/api/pesquisar?${parametros}`);
+            setResultados(resposta.resultados);
+        } catch (error) {
+            setErro(error instanceof Error ? error.message : "Falha ao pesquisar e-mails.");
+            setResultados([]);
+        } finally {
+            setCarregando(false);
+        }
     };
 
     return (
@@ -35,16 +54,28 @@ export default function() {
                             onChange={ (e) => setBusca(e.target.value)}
                             placeholder="Pesquisar por remetente, assunto ou palavra-chave..."
                             className="pl-10 text-lg py-6"
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    void handleBuscar();
+                                }
+                            }}
                         />
                     </div>
-                    <Button variant="outline" className="py-6 px-6 gap-2">
+                    <Button type="button" variant="outline" className="py-6 px-6 gap-2" onClick={() => setExibirFiltros((aberto) => !aberto)} aria-expanded={exibirFiltros}>
                         <Filter className="w-5 h-5" />
                         Filtros
                     </Button>
-                    <Button onClick={handleBuscar} className="py-6 px-8 text-lg">
+                    <Button type="button" onClick={() => void handleBuscar()} disabled={carregando} className="py-6 px-8 text-lg">
                         Buscar
                     </Button>
                 </CardContent>
+                {exibirFiltros && (
+                    <CardContent className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                        <Input aria-label="Filtrar remetente" value={remetente} onChange={(event) => setRemetente(event.target.value)} placeholder="Remetente" />
+                        <Input aria-label="Filtrar assunto" value={assunto} onChange={(event) => setAssunto(event.target.value)} placeholder="Assunto" />
+                    </CardContent>
+                )}
             </Card>
 
             {/* Tabela de Resultados Dinâmica */}
@@ -62,19 +93,25 @@ export default function() {
                         </div>
 
                         {/* Renderização real e limpa */}
-                        {resultados.length === 0 ? (
+                        {erro ? (
+                            <div role="alert" className="p-8 text-center text-red-600">{erro}</div>
+                        ) : carregando ? (
+                            <div className="p-8 text-center text-slate-500">Pesquisando e-mails...</div>
+                        ) : resultados.length === 0 ? (
                             <div className="p-8 text-center text-slate-500">
-                                Nenhum e-mail encontrado. Digite um termo e clique em buscar.
+                                Nenhum resultado. Pesquise depois de importar e indexar e-mails.
                             </div>
                         ) : (
                             resultados.map((email) => (
                                 <div key={email.id} className="grid grid-cols-12 gap-4 p-4 border-b items-center hover:bg-slate-50 cursor-pointer">
-                                    <div className="col-span-3 font-medium text-slate-700 truncate">{email.de}</div>
+                                    <div className="col-span-3 font-medium text-slate-700 truncate">{email.remetente}</div>
                                     <div className="col-span-7 text-slate-600 truncate flex items-center gap-2">
                                         <Mail className="w-4 h-4 text-slate-400" />
-                                        {email.assunto}
+                                        {email.assunto || "(sem assunto)"}
                                     </div>
-                                    <div className="col-span-2 text-right text-sm text-slate-500">{email.data}</div>
+                                    <div className="col-span-2 text-right text-sm text-slate-500">
+                                        {email.data_envio ? new Date(email.data_envio).toLocaleDateString("pt-BR") : "-"}
+                                    </div>
                                 </div>
                             ))
                         )}

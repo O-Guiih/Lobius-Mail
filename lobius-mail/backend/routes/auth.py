@@ -1,56 +1,69 @@
-from flask import Blueprint, request, jsonify
-import jwt
 import datetime
-import os
-from dotenv import load_dotenv
+import hmac
 
-# Carrega as variáveis do ficheiro .env para a memória
-load_dotenv()
+import jwt
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import func
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from models import SessionLocal, Usuario
+
 
 auth_bp = Blueprint("auth", __name__)
 
-# Chave secreta para assinar o JWT
-SECRET_KEY = os.getenv("SECRET_KEY", "chave_secreta_padrao_dev")
-
-# Usuários de teste (temporários enquanto o banco local está sendo populado)
-usuarios_bd = [
-    {"email": "admin@projeto.com", "senha": "123", "nivelDeAcesso": "admin"},
-    {"email": "comum@projeto.com", "senha": "123", "nivelDeAcesso": "comum"}
-]
 
 @auth_bp.route("/api/login", methods=["POST"])
 def login():
-    dados = request.json
-    
-    if not dados or "email" not in dados or "senha" not in dados:
-        return jsonify({"mensagem": "E-mail e senha são obrigatórios."}), 400
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify({"mensagem": "Informe e-mail e senha."}), 400
 
     email = dados.get("email")
-    senha = dados.get("senha")
-    
-    usuario_valido = None
+    senha_digitada = dados.get("senha")
+    if not isinstance(email, str) or not isinstance(senha_digitada, str):
+        return jsonify({"mensagem": "Informe e-mail e senha."}), 400
 
-    # Busca o usuário na lista
-    for u in usuarios_bd:
-        if u["email"] == email and u["senha"] == senha:
-            usuario_valido = u
-            break
-    
-    # SE NÃO ENCONTRAR O USUÁRIO: Retorna 401 (Não Autorizado) de forma limpa!
-    if not usuario_valido:
-        return jsonify({"mensagem": "E-mail ou senha incorretos."}), 401
-    
-    # Se encontrou, gera o Token JWT normalmente
-    payload = {
-        "email": usuario_valido["email"],
-        "nivelDeAcesso": usuario_valido["nivelDeAcesso"],
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-    }
-    
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    
-    return jsonify({
-        "mensagem": "Login efetuado com sucesso",
-        "token": token,
-        "nivelDeAcesso": usuario_valido["nivelDeAcesso"]
-    }), 200
+    email = email.strip().lower()
+    if not email or not senha_digitada:
+        return jsonify({"mensagem": "Informe e-mail e senha."}), 400
+
+    db = SessionLocal()
+    try:
+        usuario = (
+            db.query(Usuario)
+            .filter(func.lower(Usuario.email) == email)
+            .first()
+        )
+
+        if usuario is None or not usuario.status:
+            return jsonify({"mensagem": "E-mail ou senha incorretos."}), 401
+
+        senha_valida = check_password_hash(usuario.senha_hash, senha_digitada)
+        if not senha_valida and hmac.compare_digest(usuario.senha_hash, senha_digitada):
+            usuario.senha_hash = generate_password_hash(senha_digitada)
+            db.commit()
+            senha_valida = True
+
+        if not senha_valida:
+            return jsonify({"mensagem": "E-mail ou senha incorretos."}), 401
+
+        nivel_acesso = usuario.nivel_de_acesso
+        payload = {
+            "usuarioId": usuario.id,
+            "email": usuario.email,
+            "nivelDeAcesso": nivel_acesso,
+            "exp": datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(hours=2),
+        }
+        token = jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+
+        return jsonify({
+            "mensagem": "Login efetuado com sucesso",
+            "token": token,
+            "nivelDeAcesso": nivel_acesso,
+        }), 200
+    except Exception:
+        current_app.logger.exception("Erro ao processar login")
+        return jsonify({"mensagem": "Erro interno no servidor."}), 500
+    finally:
+        db.close()
