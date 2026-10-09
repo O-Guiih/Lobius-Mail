@@ -1,45 +1,14 @@
-import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Search, FolderArchive, LogOut, User, Menu, Users } from "lucide-react";
+import { readTokenClaims } from "@/lib/api";
 
 export function DashboardLayout() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [nivelDeAcesso, setNivelDeAcesso] = useState<string>("comum");
-    const [userEmail, setUserEmail] = useState<string>("usuario@escritorio.com");
-
-    // LER DADOS DO TOKEN JWT DO USUÁRIO LOGADO
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-
-        if (token) {
-            try {
-                // Decodifica o Payload do Token JWT sem bibliotecas externas
-                const base64Url = token.split(".")[1];
-                const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-                const jsonPayload = decodeURIComponent(
-                    atob(base64)
-                        .split("")
-                        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-                        .join("")
-                );
-
-                const payload = JSON.parse(jsonPayload);
-
-                // Atualiza o e-mail dinâmico
-                if (payload.email) {
-                    setUserEmail(payload.email);
-                }
-
-                // Atualiza o nível de acesso (aceita admin ou administrador)
-                const nivel = payload.nivelDeAcesso || payload.nivel || payload.role || "comum";
-                setNivelDeAcesso(nivel.toLowerCase());
-            } catch (error) {
-                console.error("Erro ao decodificar token JWT:", error);
-            }
-        }
-    }, []);
+    const claims = readTokenClaims();
+    const nivelDeAcesso = (claims?.nivelDeAcesso || claims?.nivel || claims?.role || "comum").toLowerCase();
+    const userEmail = claims?.email || "";
 
     // Função para tratar o Logout
     const handleLogout = () => {

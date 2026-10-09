@@ -1,2 +1,5 @@
 # Variáveis de ambiente secretas
 .env
+__pycache__/
+*.py[cod]
+temp_uploads/*

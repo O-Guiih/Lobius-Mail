@@ -21,6 +21,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { apiRequest } from "@/lib/api";
 import {
     Select,
     SelectContent,
@@ -38,7 +39,7 @@ interface Usuario {
 }
 
 export default function Usuarios() {
-    // ESTADOS DE DADOS (Agora alimentados pelo Banco de Dados)
+    // ESTADOS DE DADOS
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [carregando, setCarregando] = useState<boolean>(true);
     const [erro, setErro] = useState<string | null>(null);
@@ -48,50 +49,57 @@ export default function Usuarios() {
     const [filtroNivel, setFiltroNivel] = useState<string>("todos");
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
-    // ESTADOS DO FORMULÁRIO (NOVO USUÁRIO)
+    // ESTADOS DO FORMULÁRIO DE CRIAÇÃO
     const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
     const [novoNome, setNovoNome] = useState<string>("");
     const [novoEmail, setNovoEmail] = useState<string>("");
     const [novaSenha, setNovaSenha] = useState<string>("");
     const [novoNivel, setNovoNivel] = useState<"admin" | "comum">("comum");
 
+    // ESTADOS DO FORMULÁRIO DE EDIÇÃO
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
+    const [usuarioEditandoId, setUsuarioEditandoId] = useState<number | null>(null);
+    const [editNome, setEditNome] = useState<string>("");
+    const [editEmail, setEditEmail] = useState<string>("");
+    const [editNivel, setEditNivel] = useState<"admin" | "comum">("comum");
+
     // =========================================================================
-    // 1. CARREGAR USUÁRIOS DO BANCO DE DADOS (GET /api/usuarios)
+    // 1. CARREGAR USUÁRIOS
     // =========================================================================
     const carregarUsuarios = async () => {
         setCarregando(true);
         setErro(null);
 
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:3000/api/usuarios", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error("Erro ao carregar a lista de usuários do banco.");
-            }
-
-            const data = await response.json();
+            const data = await apiRequest<Usuario[]>("/api/usuarios");
             setUsuarios(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setErro(err.message || "Erro de conexão com o servidor.");
+            setErro(err instanceof Error ? err.message : "Erro de conexão com o servidor.");
         } finally {
             setCarregando(false);
         }
     };
 
     useEffect(() => {
-        carregarUsuarios();
+        let ativo = true;
+        apiRequest<Usuario[]>("/api/usuarios")
+            .then((data) => {
+                if (ativo) setUsuarios(data);
+            })
+            .catch((err: unknown) => {
+                if (ativo) setErro(err instanceof Error ? err.message : "Erro de conexão com o servidor.");
+            })
+            .finally(() => {
+                if (ativo) setCarregando(false);
+            });
+        return () => {
+            ativo = false;
+        };
     }, []);
 
     // =========================================================================
-    // 2. CRIAR NOVO USUÁRIO NO BANCO DE DADOS (POST /api/usuarios)
+    // 2. CRIAR NOVO USUÁRIO
     // =========================================================================
     const handleCriarUsuario = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,13 +110,8 @@ export default function Usuarios() {
         }
 
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:3000/api/usuarios", {
+            await apiRequest<Usuario>("/api/usuarios", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({
                     nome: novoNome,
                     email: novoEmail,
@@ -117,63 +120,105 @@ export default function Usuarios() {
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error("Erro ao cadastrar novo usuário.");
-            }
-
-            // Recarrega a lista do banco de dados atualizada
             await carregarUsuarios();
 
-            // Reseta o formulário e fecha a modal
             setNovoNome("");
             setNovoEmail("");
             setNovaSenha("");
             setNovoNivel("comum");
             setIsDialogOpen(false);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert(err.message || "Não foi possível cadastrar o usuário.");
+            alert(err instanceof Error ? err.message : "Não foi possível cadastrar o usuário.");
         }
     };
 
     // =========================================================================
-    // 3. ALTERAR STATUS DO USUÁRIO NO BANCO (PATCH /api/usuarios/:id/status)
+    // 3. ALTERAR STATUS DO USUÁRIO
     // =========================================================================
     const toggleStatusUsuario = async (id: number, statusAtual: "ativo" | "inativo") => {
         const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
 
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:3000/api/usuarios/${id}/status`, {
+            const resultado = await apiRequest<{ id: number; status: "ativo" | "inativo" }>(`/api/usuarios/${id}/status`, {
                 method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
                 body: JSON.stringify({ status: novoStatus }),
             });
 
-            if (!response.ok) {
-                throw new Error("Erro ao atualizar status do usuário.");
-            }
-
-            // Atualiza localmente sem precisar recarregar tudo
             setUsuarios((prev) =>
-                prev.map((u) => (u.id === id ? { ...u, status: novoStatus } : u))
+                prev.map((u) => (u.id === id ? { ...u, status: resultado.status } : u))
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert(err.message || "Erro ao alterar status do usuário.");
+            alert(err instanceof Error ? err.message : "Erro ao alterar status do usuário.");
         }
     };
 
     // =========================================================================
-    // 4. LÓGICA DE FILTRAGEM (Preservada da versão anterior)
+    // 4. EDITAR USUÁRIO (NOVA FUNÇÃO)
+    // =========================================================================
+    const abrirModalEdicao = (usuario: Usuario) => {
+        setUsuarioEditandoId(usuario.id);
+        setEditNome(usuario.nome);
+        setEditEmail(usuario.email);
+        setEditNivel(usuario.nivelDeAcesso);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleEditarUsuario = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!editNome || !editEmail || !usuarioEditandoId) {
+            alert("Por favor, preencha todos os campos obrigatórios.");
+            return;
+        }
+
+        try {
+            await apiRequest<Usuario>(`/api/usuarios/${usuarioEditandoId}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    nome: editNome,
+                    email: editEmail,
+                    nivelDeAcesso: editNivel,
+                }),
+            });
+
+            // Atualiza a lista
+            await carregarUsuarios();
+            setIsEditDialogOpen(false);
+        } catch (err: unknown) {
+            console.error(err);
+            alert(err instanceof Error ? err.message : "Não foi possível editar o usuário.");
+        }
+    };
+
+    // =========================================================================
+    // 5. EXCLUIR USUÁRIO
+    // =========================================================================
+    const handleExcluirUsuario = async (id: number) => {
+        const confirmar = window.confirm("Tem certeza que deseja excluir este usuário permanentemente?");
+        if (!confirmar) return;
+
+        try {
+            await apiRequest<{ mensagem: string }>(`/api/usuarios/${id}`, {
+                method: "DELETE",
+            });
+
+            // Atualiza a lista na tela removendo o usuário deletado
+            setUsuarios((prev) => prev.filter((u) => u.id !== id));
+        } catch (err: unknown) {
+            console.error(err);
+            alert(err instanceof Error ? err.message : "Não foi possível excluir o usuário.");
+        }
+    };
+
+    // =========================================================================
+    // LÓGICA DE FILTRAGEM
     // =========================================================================
     const usuariosFiltrados = usuarios.filter((usuario) => {
         const atendeBusca =
-            usuario.nome.toLowerCase().includes(busca.toLowerCase()) ||
-            usuario.email.toLowerCase().includes(busca.toLowerCase());
+            (usuario.nome || "").toLowerCase().includes(busca.toLowerCase()) ||
+            (usuario.email || "").toLowerCase().includes(busca.toLowerCase());
 
         const atendeNivel =
             filtroNivel === "todos" || usuario.nivelDeAcesso === filtroNivel;
@@ -195,7 +240,7 @@ export default function Usuarios() {
                     </p>
                 </div>
 
-                {/* MODAL DE NOVO USUÁRIO */}
+                {/* MODAL DE CRIAÇÃO */}
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
@@ -268,6 +313,66 @@ export default function Usuarios() {
                                 </Button>
                                 <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                                     Salvar Usuário
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* MODAL DE EDIÇÃO (NOVO) */}
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Editar Usuário</DialogTitle>
+                            <DialogDescription>
+                                Altere as informações do usuário.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleEditarUsuario} className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-nome">Nome Completo</Label>
+                                <Input
+                                    id="edit-nome"
+                                    value={editNome}
+                                    onChange={(e) => setEditNome(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-email">E-mail</Label>
+                                <Input
+                                    id="edit-email"
+                                    type="email"
+                                    value={editEmail}
+                                    onChange={(e) => setEditEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-nivel">Nível de Acesso</Label>
+                                <Select
+                                    value={editNivel}
+                                    onValueChange={(v: "admin" | "comum") => setEditNivel(v)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione o nível" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="comum">Comum (Visualizador)</SelectItem>
+                                        <SelectItem value="admin">Administrador (Total)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <DialogFooter className="pt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsEditDialogOpen(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    Atualizar Usuário
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -375,10 +480,21 @@ export default function Usuarios() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="icon" title="Editar Usuário">
+                                            {/* BOTÃO DE EDITAR AGORA CONECTADO */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Editar Usuário"
+                                                onClick={() => abrirModalEdicao(u)}
+                                            >
                                                 <Edit className="w-4 h-4 text-slate-600" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" title="Excluir Usuário">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Excluir Usuário"
+                                                onClick={() => handleExcluirUsuario(u.id)}
+                                            >
                                                 <Trash2 className="w-4 h-4 text-red-600" />
                                             </Button>
                                         </div>

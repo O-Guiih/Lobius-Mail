@@ -3,10 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/comp
 import { Button } from "@/components/ui/button";
 import { FileUp, ArrowLeft, File, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { apiRequest } from "@/lib/api";
 
 export default function Importar() {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [enviando, setEnviando] = useState(false);
+    const [erro, setErro] = useState("");
+    const [sucesso, setSucesso] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Funções para lidar com o Arrastar e Soltar
@@ -41,10 +45,33 @@ const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
 
 // Validação (para garantir que é .pst)
 const validateAndSetFile = (file: File) => {
-    if (file.name.endsWith(".pst")) {
+    setErro("");
+    setSucesso("");
+    if (file.name.toLowerCase().endsWith(".pst")) {
         setSelectedFile(file);
     } else {
-        alert("Por favor, selecione apenas arquivos do tipo .pst");
+        setErro("Selecione um arquivo com extensão .pst.");
+    }
+};
+
+const handleUpload = async () => {
+    if (!selectedFile) return;
+    const formData = new FormData();
+    formData.append("arquivo", selectedFile);
+    setEnviando(true);
+    setErro("");
+    setSucesso("");
+    try {
+        const result = await apiRequest<{ mensagem: string }>("/api/pst/importar", {
+            method: "POST",
+            body: formData,
+        });
+        setSucesso(result.mensagem);
+        setSelectedFile(null);
+    } catch (error) {
+        setErro(error instanceof Error ? error.message : "Falha ao enviar o arquivo.");
+    } finally {
+        setEnviando(false);
     }
 };
 
@@ -56,12 +83,15 @@ return (
                 Voltar para o Dashboard
             </Button>
         </Link>
+
+        {erro && <p role="alert" className="mb-4 text-sm text-red-600">{erro}</p>}
+        {sucesso && <p role="status" className="mb-4 text-sm text-green-700">{sucesso} <Link className="underline" to="/arquivos-pst">Ver arquivos</Link></p>}
         
         <Card>
             <CardHeader>
                 <CardTitle className="text-2xl">Importar Arquivo PST</CardTitle>
                 <CardDescription>
-                    Selecione o arquivo de banco de dados do Outlook para iniciar o processamento.
+                    Selecione um arquivo do Outlook para armazená-lo no repositório PST.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -107,7 +137,9 @@ return (
                             <Button variant="outline" onClick={() => setSelectedFile(null)}>
                                 Trocar Arquivo
                             </Button>
-                            <Button>Iniciar Processamento</Button>
+                            <Button onClick={handleUpload} disabled={enviando}>
+                                {enviando ? "Enviando..." : "Arquivar arquivo PST"}
+                            </Button>
                         </div>
                     </div>
                 )}

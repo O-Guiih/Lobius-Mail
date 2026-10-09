@@ -1,13 +1,20 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, BIGINT, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:553719@localhost:5432/lobius_mail")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
+
+
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # ---------------------------------------------------------
 # [DB] Tabela: usuarios
@@ -21,7 +28,7 @@ class Usuario(Base):
     senha_hash = Column(String, nullable=False) 
     nivel_de_acesso = Column(String, nullable=False) # "admin" ou "comum"
     status = Column(Boolean, default=True) 
-    data_criacao = Column(DateTime, default=datetime.utcnow) 
+    data_criacao = Column(DateTime, default=utcnow)
 
     def to_dict(self):
         return {
@@ -41,9 +48,20 @@ class ArquivoPST(Base):
     id = Column(Integer, primary_key=True, index=True) 
     nome_arquivo = Column(String, nullable=False) 
     tamanho_bytes = Column(BIGINT) 
-    data_importacao = Column(DateTime, default=datetime.utcnow) 
+    data_importacao = Column(DateTime, default=utcnow)
     status_processamento = Column(String) 
     importado_por = Column(Integer, ForeignKey("usuarios.id")) 
+    caminho_arquivo = Column(Text, nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome_arquivo": self.nome_arquivo,
+            "tamanho_bytes": self.tamanho_bytes,
+            "data_importacao": self.data_importacao.isoformat() if self.data_importacao else None,
+            "status_processamento": self.status_processamento,
+            "importado_por": self.importado_por,
+        }
 
 # ---------------------------------------------------------
 # [DB] Tabela: emails
@@ -57,7 +75,7 @@ class Email(Base):
     destinatarios = Column(Text) 
     assunto = Column(String) 
     corpo_texto = Column(Text) 
-    data_envio = Column(DateTime) 
+    data_envio = Column(DateTime)
     tem_anexo = Column(Boolean) 
 
 Index('idx_remetente', Email.remetente)
@@ -67,6 +85,15 @@ Index('idx_data_envio', Email.data_envio)
 def init_db():
     print("Iniciando setup do banco de dados...")
     Base.metadata.create_all(bind=engine)
+
+    # Adiciona a coluna em bancos criados por versões anteriores do projeto.
+    if engine.dialect.name == "postgresql":
+        from sqlalchemy import text
+
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE arquivos_pst ADD COLUMN IF NOT EXISTS caminho_arquivo TEXT"
+            ))
     
     db = SessionLocal()
     try:

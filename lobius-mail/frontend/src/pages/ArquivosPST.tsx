@@ -1,44 +1,67 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText} from "lucide-react";
+import { Download, FileText, Trash2 } from "lucide-react";
+import { apiDownload, apiRequest, readTokenClaims } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
-// Tipagem do arquivo
-interface Arquivo{
-    id: string;
-    nome: string;
-    tamanho: string;
-    status: "Concluido" | "Processando" | "Erro";
-    dataUpload: string;
+interface Arquivo {
+    id: number;
+    nome_arquivo: string;
+    tamanho_bytes: number;
+    status_processamento: string;
+    data_importacao: string | null;
 }
 
-// Dados simulados
-const arquivos: Arquivo[] = [
-    { id: "1", nome: "backup_diretoria_2023.pst", tamanho: "2,4 GB", status: "Concluido", dataUpload: "20 Ago, 10:30" },
-    { id: "2", nome: "histórico_rh_antigo.pst", tamanho: "850 MB", status: "Processando", dataUpload: "24 Ago, 14:15"},
-    { id: "3", nome: "caixa_corrompida.pst", tamanho: "1.2 GB", status: "Erro", dataUpload: "23 Ago, 09:00" },
-];
-
 export default function ArquivosPST() {
-   
-    // Função para retornar o Badge oficial com as cores certas
-    const getStatusBagde = (status: string) => {
-        switch (status) {
-            case "Concluido":
-                return <Badge className="bg-emerald-500 hover:bg-emerald-600">Concluido</Badge>;
-            case "Processando":
-                return <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">Processando</Badge>;
-            case "Erro":
-                return <Badge variant="destructive">Erro</Badge>;
-            default:
-                return <Badge variant="outline">{status}</Badge>;
+    const [arquivos, setArquivos] = useState<Arquivo[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [erro, setErro] = useState("");
+    const [excluindoId, setExcluindoId] = useState<number | null>(null);
+    const claims = readTokenClaims();
+    const nivel = (claims?.nivelDeAcesso || claims?.nivel || claims?.role || "").toLowerCase();
+    const isAdmin = nivel === "admin" || nivel === "administrador";
+
+    useEffect(() => {
+        apiRequest<Arquivo[]>("/api/arquivos-pst")
+            .then(setArquivos)
+            .catch((error: unknown) => setErro(error instanceof Error ? error.message : "Falha ao carregar arquivos."))
+            .finally(() => setCarregando(false));
+    }, []);
+
+    const formatarTamanho = (bytes: number) => new Intl.NumberFormat("pt-BR", {
+        style: "unit", unit: "byte", notation: "compact", maximumFractionDigits: 1,
+    }).format(bytes);
+
+    const formatarData = (data: string | null) => data
+        ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(data))
+        : "-";
+
+    const excluirArquivo = async (arquivo: Arquivo) => {
+        const confirmado = window.confirm(
+            `Excluir "${arquivo.nome_arquivo}" e os e-mails associados? Esta ação não pode ser desfeita.`
+        );
+        if (!confirmado) return;
+
+        setExcluindoId(arquivo.id);
+        setErro("");
+        try {
+            await apiRequest<{ mensagem: string }>(`/api/arquivos-pst/${arquivo.id}`, {
+                method: "DELETE",
+            });
+            setArquivos((atuais) => atuais.filter((item) => item.id !== arquivo.id));
+        } catch (error) {
+            setErro(error instanceof Error ? error.message : "Falha ao excluir arquivo.");
+        } finally {
+            setExcluindoId(null);
         }
     };
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6">
             <h1 className="text-3xl font-bold text-slate-800">Arquivos PST Importados</h1>
-            <p className="text-slate-500">Acompanhe o status de processamento dos seus arquivos de banco de dados.</p>
+            <p className="text-slate-500">Acompanhe os arquivos PST armazenados no sistema.</p>
 
             <Card>
                 <CardHeader>
@@ -53,18 +76,48 @@ export default function ArquivosPST() {
                                     <TableHead>Tamanho</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Data do Upload</TableHead>
+                                    <TableHead className="text-right">Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {arquivos.map((arquivo) => (
+                                {carregando ? (
+                                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-slate-500">Carregando arquivos...</TableCell></TableRow>
+                                ) : erro ? (
+                                    <TableRow><TableCell colSpan={5} role="alert" className="py-8 text-center text-red-600">{erro}</TableCell></TableRow>
+                                ) : arquivos.length === 0 ? (
+                                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-slate-500">Nenhum arquivo PST arquivado.</TableCell></TableRow>
+                                ) : arquivos.map((arquivo) => (
                                     <TableRow key={arquivo.id}>
                                         <TableCell className="font-medium flex items-center gap-2">
                                             <FileText className="w-4 h-4 text-slate-400" />
-                                            {arquivo.nome}
+                                            {arquivo.nome_arquivo}
                                         </TableCell>
-                                        <TableCell>{arquivo.tamanho}</TableCell>
-                                        <TableCell>{getStatusBagde(arquivo.status)}</TableCell>
-                                        <TableCell className="text-right text-slate-500">{arquivo.dataUpload}</TableCell>
+                                        <TableCell>{formatarTamanho(arquivo.tamanho_bytes)}</TableCell>
+                                        <TableCell><Badge variant="secondary">{arquivo.status_processamento}</Badge></TableCell>
+                                        <TableCell className="text-right text-slate-500">{formatarData(arquivo.data_importacao)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Baixar arquivo PST"
+                                                aria-label={`Baixar ${arquivo.nome_arquivo}`}
+                                                onClick={() => void apiDownload(`/api/arquivos-pst/${arquivo.id}/download`, arquivo.nome_arquivo).catch((error: unknown) => setErro(error instanceof Error ? error.message : "Falha no download."))}
+                                            >
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                            {isAdmin && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    title="Excluir arquivo PST"
+                                                    aria-label={`Excluir ${arquivo.nome_arquivo}`}
+                                                    disabled={excluindoId === arquivo.id}
+                                                    onClick={() => void excluirArquivo(arquivo)}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-red-600" />
+                                                </Button>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom"; // Mudamos de Link para useNavigate
+import { apiRequest } from "@/lib/api";
 
 export default function Login() {
     // 1. Criamos os estados para guardar o que o usuário digita
@@ -18,28 +19,14 @@ export default function Login() {
 
         try {
             // Faz o pedido para o back-end real
-            const response = await fetch("http://localhost:5000/api/login", {
+            const data = await apiRequest<{ token: string }>("/api/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email, senha }) // Envia os dados que o usuário digitou
+                body: JSON.stringify({ email, senha })
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // AQUI ESTÁ A MÁGICA: Guardando o Token (Crachá)
-                localStorage.setItem("token", data.token);
-                
-                // Redireciona para o Dashboard agora que temos permissão
-                navigate("/dashboard");
-            } else {
-                // Se a API retornar erro (ex: senha inválida), mostramos na tela
-                setErro(data.mensagem || "E-mail ou senha incorretos.");
-            }
+            localStorage.setItem("token", data.token);
+            navigate("/dashboard");
         } catch (error) {
-            setErro("Erro de conexão com o servidor. O Back-end está rodando?");
+            setErro(error instanceof Error ? error.message : "Não foi possível conectar ao servidor.");
         }
     };
 
